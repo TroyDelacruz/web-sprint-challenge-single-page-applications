@@ -53,7 +53,7 @@ const initialDisabled = true;
 const App = () => {
   const [orders, setOrders] = useState(initialOrders);
   const [formValues, setFormValues] = useState(initialFormValues);
-  const [formErrors, seFormErrors] = useState(initialFormErrors);
+  const [formErrors, setFormErrors] = useState(initialFormErrors);
   const [disabled, setDisabled] = useState(initialDisabled);
 
   function reset() {
@@ -64,6 +64,54 @@ const App = () => {
     setOrders(initialOrders);
   }
 
+  const validate = (name, value) => {
+    yup
+      .reach(formSchema, name)
+      .validate(value)
+      .then(() => setFormErrors({ ...formErrors, [name]: "" }))
+      .catch((err) => setFormErrors({ ...formErrors, [name]: err.errors[0] }));
+  };
+
+  useEffect(() => {
+    formSchema.isValid(formValues).then((valid) => {
+      setDisabled(!valid);
+    });
+  }, [formValues]);
+
+  const updateForm = (inputName, inputValue) => {
+    validate(inputName, inputValue);
+    setFormValues({ ...formValues, [inputName]: inputValue });
+  };
+
+  const postNewOrder = (newOrder) => {
+    axios
+      .post("https://reqres.in/api/orders", newOrder)
+      .then(({ data }) => {
+        setOrders([data, ...orders]);
+        console.log(data);
+      })
+      .catch((err) => console.error(err))
+      .finally(() => setFormValues(initialFormValues));
+  };
+
+  const submitOrder = () => {
+    const newOrder = {
+      customer: formValues.customer,
+      size: formValues.size,
+      sauce: formValues.sauce,
+      pepperoni: formValues.pepperoni,
+      sausage: formValues.sausage,
+      chicken: formValues.chicken,
+      mushroom: formValues.mushroom,
+      ham: formValues.ham,
+      extraCheese: formValues.extraCheese,
+      special: formValues.special,
+      gluten: formValues.gluten,
+    };
+    setFormValues(initialFormValues);
+    postNewOrder(newOrder);
+  };
+
   return (
     <>
       <Switch>
@@ -71,10 +119,17 @@ const App = () => {
           <Home />
         </Route>
         <Route path="/pizza">
-          <Pizza />
+          <Pizza
+            values={formValues}
+            change={updateForm}
+            submit={submitOrder}
+            disabled={disabled}
+            errors={formErrors}
+            reset={reset}
+          />
         </Route>
         <Route path="/confirmation">
-          <Confirmation />
+          <Confirmation order={orders} clear={clearOrders} />
         </Route>
       </Switch>
     </>
